@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알록달록 꼬마 피아노 교실</title>
+    <!-- Tailwind CSS for modern responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for friendly typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Dongle:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background: linear-gradient(135deg, #fbcfe8 0%, #bae6fd 50%, #fed7aa 100%);
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .piano-container {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        /* White key styling */
+        .white-key {
+            background: linear-gradient(to bottom, #ffffff 0%, #f1f5f9 100%);
+            border: 1px solid #cbd5e1;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            transition: background 0.1s, transform 0.05s;
+        }
+        .white-key:active, .white-key.active {
+            background: linear-gradient(to bottom, #e2e8f0 0%, #cbd5e1 100%) !important;
+            transform: translateY(2px);
+        }
+        /* Black key styling */
+        .black-key {
+            background: linear-gradient(to bottom, #334155 0%, #0f172a 100%);
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            z-index: 10;
+            transition: background 0.1s, transform 0.05s;
+        }
+        .black-key:active, .black-key.active {
+            background: linear-gradient(to bottom, #1e293b 0%, #020617 100%) !important;
+            transform: translateY(2px);
+        }
+        /* Custom bounce animation for notes */
+        @keyframes popUp {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popUp 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between p-4 md:p-6">
+
+    <header class="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between bg-white/80 backdrop-blur-md p-4 rounded-3xl shadow-md mb-4 gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-pink-400 text-white p-3 rounded-2xl shadow-inner text-2xl animate-bounce">
+                <i class="fa-solid fa-music"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl text-purple-600 font-bold">알록달록 꼬마 피아노</h1>
+                <p class="text-sm text-gray-500">초등학생 음악 수업용 인터랙티브 피아노 교실</p>
+            </div>
+        </div>
+
+        <!-- Mode Selectors & Controls -->
+        <div class="flex flex-wrap items-center gap-2 justify-center">
+            <button id="modeFreeBtn" onclick="setMode('free')" class="px-4 py-2 rounded-xl font-bold bg-purple-500 text-white shadow-md hover:bg-purple-600 transition flex items-center gap-2">
+                <i class="fa-solid fa-hand-pointer"></i> 자유 연주
+            </button>
+            <button id="modeGuideBtn" onclick="setMode('guide')" class="px-4 py-2 rounded-xl font-bold bg-gray-200 text-gray-700 shadow-sm hover:bg-purple-100 hover:text-purple-600 transition flex items-center gap-2">
+                <i class="fa-solid fa-book-open-reader"></i> 동요 따라치기
+            </button>
+            <button id="recordBtn" onclick="toggleRecord()" class="px-4 py-2 rounded-xl font-bold bg-rose-400 text-white shadow-md hover:bg-rose-500 transition flex items-center gap-2">
+                <i class="fa-solid fa-circle text-xs" id="recordIcon"></i> <span id="recordText">녹음하기</span>
+            </button>
+            <button id="playRecordBtn" onclick="playRecord()" disabled class="px-4 py-2 rounded-xl font-bold bg-gray-200 text-gray-400 shadow-sm cursor-not-allowed flex items-center gap-2">
+                <i class="fa-solid fa-play"></i> 재생
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl flex flex-col gap-4">
+        
+        <!-- Song Guide Panel (Hidden by default, shown in guide mode) -->
+        <div id="guidePanel" class="hidden bg-white/90 backdrop-blur-md p-5 rounded-3xl shadow-lg border-2 border-purple-200">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="bg-amber-400 text-white px-3 py-1 rounded-xl text-sm font-bold">연주 연습</span>
+                    <select id="songSelect" onchange="changeSong()" class="bg-gray-100 border border-gray-300 rounded-xl px-3 py-1 font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        <option value="school">학교종이 땡땡땡</option>
+                        <option value="rabbit">산토끼</option>
+                        <option value="butterfly">나비야</option>
+                    </select>
+                </div>
+                <div id="songStatus" class="text-purple-700 font-bold text-lg">
+                    건반을 눌러 음악을 시작해보세요!
+                </div>
+                <button onclick="resetSong()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-xl font-bold text-sm transition">
+                    <i class="fa-solid fa-rotate-right"></i> 처음부터 다시
+                </button>
+            </div>
+            <!-- Note Visualizer Guide Track -->
+            <div id="guideNotesContainer" class="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-2xl min-h-[60px] overflow-x-auto">
+                <!-- Dynamically generated guide notes -->
+            </div>
+        </div>
+
+        <!-- Visual Feedback / Note Display Banner -->
+        <div class="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-xl flex flex-col items-center justify-center relative overflow-hidden min-h-[160px] border-4 border-white">
+            <!-- Cute decoration bubbles -->
+            <div class="absolute -top-10 -left-10 w-32 h-32 bg-pink-200 rounded-full opacity-50 pointer-events-none"></div>
+            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-200 rounded-full opacity-50 pointer-events-none"></div>
+
+            <div id="activeNoteDisplay" class="text-6xl md:text-7xl font-bold text-purple-600 mb-2 transition transform animate-pop">
+                🎹
+            </div>
+            <div id="activeNoteName" class="text-lg md:text-xl font-bold text-gray-600 bg-white/80 px-4 py-1 rounded-full shadow-sm">
+                건반을 누르거나 키보드를 쳐보세요!
+            </div>
+        </div>
+
+        <!-- Piano Keyboard Container (2.5 Octaves: C3 to E5) -->
+        <div class="piano-container bg-slate-900 p-4 md:p-6 rounded-3xl relative overflow-x-auto">
+            <div class="flex justify-center min-w-[700px] relative h-48 md:h-64 select-none" id="keyboard">
+                <!-- Keys will be dynamically rendered via JavaScript for absolute precision -->
+            </div>
+            <!-- Keyboard mapping helper toggle or hint -->
+            <div class="text-center text-xs text-slate-400 mt-3">
+                💡 컴퓨터 키보드 상단(숫자키 및 A-Z 열)과 연동되어 있습니다. 한글 음이름을 보며 연주해 보세요!
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-5xl text-center text-gray-500 text-sm mt-6">
+        <p>초등 음악 교실 웹 애플리케이션 &bull; Web Audio API 기반 고품질 사운드</p>
+    </footer>
+
+    <script>
+        // --- Web Audio API Piano Sound Engine ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Frequencies for notes from C3 to E5
+        const noteFrequencies = {
+            'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94,
+            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25
+        };
+
+        // Piano key layout definition with Korean solfege labels
+        const pianoKeys = [
+            { note: 'C3', type: 'white', keyMap: 'z', label: 'Z', ko: '도' },
+            { note: 'C#3', type: 'black', keyMap: 's', label: 'S', ko: '도#' },
+            { note: 'D3', type: 'white', keyMap: 'x', label: 'X', ko: '레' },
+            { note: 'D#3', type: 'black', keyMap: 'd', label: 'D', ko: '레#' },
+            { note: 'E3', type: 'white', keyMap: 'c', label: 'C', ko: '미' },
+            { note: 'F3', type: 'white', keyMap: 'v', label: 'V', ko: '파' },
+            { note: 'F#3', type: 'black', keyMap: 'g', label: 'G', ko: '파#' },
+            { note: 'G3', type: 'white', keyMap: 'b', label: 'B', ko: '솔' },
+            { note: 'G#3', type: 'black', keyMap: 'h', label: 'H', ko: '솔#' },
+            { note: 'A3', type: 'white', keyMap: 'n', label: 'N', ko: '라' },
+            { note: 'A#3', type: 'black', keyMap: 'j', label: 'J', ko: '라#' },
+            { note: 'B3', type: 'white', keyMap: 'm', label: 'M', ko: '시' },
+            
+            { note: 'C4', type: 'white', keyMap: 'q', label: 'Q', ko: '도' },
+            { note: 'C#4', type: 'black', keyMap: '2', label: '2', ko: '도#' },
+            { note: 'D4', type: 'white', keyMap: 'w', label: 'W', ko: '레' },
+            { note: 'D#4', type: 'black', keyMap: '3', label: '3', ko: '레#' },
+            { note: 'E4', type: 'white', keyMap: 'e', label: 'E', ko: '미' },
+            { note: 'F4', type: 'white', keyMap: 'r', label: 'R', ko: '파' },
+            { note: 'F#4', type: 'black', keyMap: '5', label: '5', ko: '파#' },
+            { note: 'G4', type: 'white', keyMap: 't', label: 'T', ko: '솔' },
+            { note: 'G#4', type: 'black', keyMap: '6', label: '6', ko: '솔#' },
+            { note: 'A4', type: 'white', keyMap: 'y', label: 'Y', ko: '라' },
+            { note: 'A#4', type: 'black', keyMap: '7', label: '7', ko: '라#' },
+            { note: 'B4', type: 'white', keyMap: 'u', label: 'U', ko: '시' },
+            
+            { note: 'C5', type: 'white', keyMap: 'i', label: 'I', ko: '도' },
+            { note: 'C#5', type: 'black', keyMap: '9', label: '9', ko: '도#' },
+            { note: 'D5', type: 'white', keyMap: 'o', label: 'O', ko: '레' },
+            { note: 'D#5', type: 'black', keyMap: '0', label: '0', ko: '레#' },
+            { note: 'E5', type: 'white', keyMap: 'p', label: 'P', ko: '미' }
+        ];
+
+        // Detailed Korean names for banner display
+        const koreanNoteNames = {
+            'C3': '도 (C3)', 'C#3': '도#', 'D3': '레 (D3)', 'D#3': '레#', 'E3': '미 (E3)', 'F3': '파 (F3)', 'F#3': '파#', 'G3': '솔 (G3)', 'G#3': '솔#', 'A3': '라 (A3)', 'A#3': '라#', 'B3': '시 (B3)',
+            'C4': '도 (C4)', 'C#4': '도#', 'D4': '레 (D4)', 'D#4': '레#', 'E4': '미 (E4)', 'F4': '파 (F4)', 'F#4': '파#', 'G4': '솔 (G4)', 'G#4': '솔#', 'A4': '라 (A4)', 'A#4': '라#', 'B4': '시 (B4)',
+            'C5': '도 (C5)', 'C#5': '도#', 'D5': '레 (D5)', 'D#5': '레#', 'E5': '미 (E5)'
+        };
+
+        function playTone(note) {
+            initAudio();
+            const freq = noteFrequencies[note];
+            if (!freq) return;
+
+            // Create oscillators for richer piano-like timbre (Harmonics)
+            const now = audioCtx.currentTime;
+            
+            // Master gain for envelope
+            const masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0.001, now);
+            // Attack
+            masterGain.gain.exponentialRampToValueAtTime(0.5, now + 0.04);
+            // Decay & Release
+            masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+
+            // Fundamental & Overtones
+            const osc1 = audioCtx.createOscillator(); // Main
+            const osc2 = audioCtx.createOscillator(); // Octave harmonic
+            
+            osc1.type = 'triangle';
+            osc2.type = 'sine';
+
+            osc1.frequency.setValueAtTime(freq, now);
+            osc2.frequency.setValueAtTime(freq * 2, now);
+
+            osc1.connect(masterGain);
+            osc2.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+
+            osc1.stop(now + 1.5);
+            osc2.stop(now + 1.5);
+
+            // Record note if recording
+            if (isRecording) {
+                recordedNotes.push({ note: note, time: Date.now() - recordStartTime });
+            }
+
+            // Check guide mode
+            if (currentMode === 'guide') {
+                checkSongProgress(note);
+            }
+
+            // Visual UI update
+            triggerKeyVisual(note);
+        }
+
+        // --- STREAMING_CHUNK:Building Keyboard UI Dynamically ---
+        function buildKeyboard() {
+            const container = document.getElementById('keyboard');
+            container.innerHTML = '';
+
+            // Calculate white key count to size them proportionally
+            const whiteKeys = pianoKeys.filter(k => k.type === 'white');
+            const whiteKeyWidthPercent = 100 / whiteKeys.length;
+
+            let whiteKeyIndex = 0;
+
+            pianoKeys.forEach((keyData) => {
+                if (keyData.type === 'white') {
+                    const keyEl = document.createElement('div');
+                    keyEl.className = `white-key absolute h-full flex flex-col justify-between items-center pb-4 cursor-pointer select-none`;
+                    keyEl.style.width = `${whiteKeyWidthPercent}%`;
+                    keyEl.style.left = `${whiteKeyIndex * whiteKeyWidthPercent}%`;
+                    keyEl.setAttribute('data-note', keyData.note);
+                    
+                    keyEl.innerHTML = `
+                        <span class="text-xs font-bold text-gray-400 mt-2">${keyData.label}</span>
+                        <span class="text-sm md:text-base font-bold text-gray-700 mb-2">${keyData.ko}</span>
+                    `;
+
+                    keyEl.addEventListener('mousedown', () => playTone(keyData.note));
+                    keyEl.addEventListener('touchstart', (e) => { e.preventDefault(); playTone(keyData.note); });
+
+                    container.appendChild(keyEl);
+                    whiteKeyIndex++;
+                }
+            });
+
+            // Position black keys over white keys
+            whiteKeyIndex = 0;
+            pianoKeys.forEach((keyData, idx) => {
+                if (keyData.type === 'white') {
+                    whiteKeyIndex++;
+                } else if (keyData.type === 'black') {
+                    // Black key sits between white keys
+                    const blackKeyWidth = whiteKeyWidthPercent * 0.65;
+                    const leftPos = (whiteKeyIndex * whiteKeyWidthPercent) - (blackKeyWidth / 2);
+
+                    const keyEl = document.createElement('div');
+                    keyEl.className = `black-key absolute h-3/5 flex flex-col justify-between items-center pb-2 cursor-pointer select-none`;
+                    keyEl.style.width = `${blackKeyWidth}%`;
+                    keyEl.style.left = `${leftPos}%`;
+                    keyEl.setAttribute('data-note', keyData.note);
+
+                    keyEl.innerHTML = `
+                        <span class="text-[10px] font-bold text-slate-400 mt-1">${keyData.label}</span>
+                    `;
+
+                    keyEl.addEventListener('mousedown', (e) => { e.stopPropagation(); playTone(keyData.note); });
+                    keyEl.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); playTone(keyData.note); });
+
+                    container.appendChild(keyEl);
+                }
+            });
+        }
+
+        // Trigger key animation & banner update
+        function triggerKeyVisual(note) {
+            const keyElement = document.querySelector(`[data-note="${note}"]`);
+            if (keyElement) {
+                keyElement.classList.add('active');
+                setTimeout(() => keyElement.classList.remove('active'), 150);
+            }
+
+            // Update banner
+            const display = document.getElementById('activeNoteDisplay');
+            const nameBanner = document.getElementById('activeNoteName');
+            
+            display.innerText = note.replace(/[0-9]/g, '');
+            nameBanner.innerText = koreanNoteNames[note] || note;
+            
+            // Re-trigger animation
+            display.classList.remove('animate-pop');
+            void display.offsetWidth;
+            display.classList.add('animate-pop');
+        }
+
+        // --- STREAMING_CHUNK:Keyboard event listener integration ---
+        const keyMap = {};
+        pianoKeys.forEach(k => {
+            keyMap[k.keyMap.toLowerCase()] = k.note;
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return; // Prevent spamming on hold
+            const note = keyMap[e.key.toLowerCase()];
+            if (note) {
+                playTone(note);
+            }
+        });
+
+        // --- STREAMING_CHUNK:App modes (Free vs Song Guide) ---
+        let currentMode = 'free';
+
+        function setMode(mode) {
+            currentMode = mode;
+            const freeBtn = document.getElementById('modeFreeBtn');
+            const guideBtn = document.getElementById('modeGuideBtn');
+            const guidePanel = document.getElementById('guidePanel');
+
+            if (mode === 'free') {
+                freeBtn.className = "px-4 py-2 rounded-xl font-bold bg-purple-500 text-white shadow-md hover:bg-purple-600 transition flex items-center gap-2";
+                guideBtn.className = "px-4 py-2 rounded-xl font-bold bg-gray-200 text-gray-700 shadow-sm hover:bg-purple-100 hover:text-purple-600 transition flex items-center gap-2";
+                guidePanel.classList.add('hidden');
+            } else {
+                guideBtn.className = "px-4 py-2 rounded-xl font-bold bg-purple-500 text-white shadow-md hover:bg-purple-600 transition flex items-center gap-2";
+                freeBtn.className = "px-4 py-2 rounded-xl font-bold bg-gray-200 text-gray-700 shadow-sm hover:bg-purple-100 hover:text-purple-600 transition flex items-center gap-2";
+                guidePanel.classList.remove('hidden');
+                initSong();
+            }
+        }
+
+        // --- STREAMING_CHUNK:Song Guide Logic ---
+        const songs = {
+            school: {
+                title: "학교종이 땡땡땡",
+                notes: ['G4', 'G4', 'A4', 'A4', 'G4', 'G4', 'E4', 'G4', 'G4', 'E4', 'E4', 'D4', 'G4', 'G4', 'A4', 'A4', 'G4', 'G4', 'E4', 'G4', 'E4', 'D4', 'E4', 'C4'],
+                koNotes: ['솔', '솔', '라', '라', '솔', '솔', '미', '솔', '솔', '미', '미', '레', '솔', '솔', '라', '라', '솔', '솔', '미', '솔', '미', '레', '미', '도']
+            },
+            rabbit: {
+                title: "산토끼",
+                notes: ['G4', 'E4', 'G4', 'C5', 'G4', 'E4', 'G4', 'G4', 'A4', 'G4', 'E4', 'D4', 'E4', 'G4', 'C5'],
+                koNotes: ['솔', '미', '솔', '도', '솔', '미', '솔', '솔', '라', '솔', '미', '레', '미', '솔', '도']
+            },
+            butterfly: {
+                title: "나비야",
+                notes: ['G4', 'E4', 'E4', 'F4', 'D4', 'D4', 'C4', 'D4', 'E4', 'F4', 'G4', 'G4', 'G4', 'G4', 'E4', 'E4', 'F4', 'D4', 'C4', 'E4', 'G4', 'G4', 'C4'],
+                koNotes: ['솔', '미', '미', '파', '레', '레', '도', '레', '미', '파', '솔', '솔', '솔', '솔', '미', '미', '파', '레', '도', '미', '솔', '솔', '도']
+            }
+        };
+
+        let currentSongKey = 'school';
+        let currentNoteIndex = 0;
+
+        function initSong() {
+            const select = document.getElementById('songSelect');
+            currentSongKey = select.value;
+            currentNoteIndex = 0;
+            renderSongNotes();
+            updateSongStatus();
+        }
+
+        function changeSong() {
+            initSong();
+        }
+
+        function resetSong() {
+            currentNoteIndex = 0;
+            renderSongNotes();
+            updateSongStatus();
+        }
+
+        function renderSongNotes() {
+            const container = document.getElementById('guideNotesContainer');
+            container.innerHTML = '';
+            const song = songs[currentSongKey];
+
+            song.notes.forEach((note, idx) => {
+                const span = document.createElement('div');
+                span.className = `px-3 py-1 rounded-xl font-bold text-sm transition-all ${
+                    idx === currentNoteIndex 
+                        ? 'bg-purple-600 text-white scale-110 shadow-md' 
+                        : idx < currentNoteIndex 
+                            ? 'bg-green-200 text-green-700 opacity-60' 
+                            : 'bg-white text-gray-600 border border-purple-200'
+                }`;
+                span.innerText = song.koNotes[idx];
+                container.appendChild(span);
+            });
+        }
+
+        function updateSongStatus() {
+            const statusEl = document.getElementById('songStatus');
+            const song = songs[currentSongKey];
+            if (currentNoteIndex >= song.notes.length) {
+                statusEl.innerHTML = "🎉 와우! 연주를 완벽하게 끝냈어요! 대단해요!";
+            } else {
+                statusEl.innerHTML = `👉 다음 연주할 음: <span class="text-pink-600 text-2xl">${song.koNotes[currentNoteIndex]}</span>`;
+            }
+        }
+
+        function checkSongProgress(note) {
+            const songNotes = songs[currentSongKey].notes;
+            if (currentNoteIndex < songNotes.length) {
+                if (note === songNotes[currentNoteIndex]) {
+                    currentNoteIndex++;
+                    renderSongNotes();
+                    updateSongStatus();
+                }
+            }
+        }
+
+        // --- STREAMING_CHUNK:Recording & Playback functionality ---
+        let isRecording = false;
+        let recordedNotes = [];
+        let recordStartTime = 0;
+
+        function toggleRecord() {
+            const btn = document.getElementById('recordBtn');
+            const icon = document.getElementById('recordIcon');
+            const text = document.getElementById('recordText');
+            const playBtn = document.getElementById('playRecordBtn');
+
+            if (!isRecording) {
+                // Start recording
+                isRecording = true;
+                recordedNotes = [];
+                recordStartTime = Date.now();
+                btn.className = "px-4 py-2 rounded-xl font-bold bg-red-600 text-white shadow-md animate-pulse flex items-center gap-2";
+                icon.className = "fa-solid fa-square text-xs";
+                text.innerText = "녹음 중지";
+                playBtn.disabled = true;
+                playBtn.className = "px-4 py-2 rounded-xl font-bold bg-gray-200 text-gray-400 shadow-sm cursor-not-allowed flex items-center gap-2";
+            } else {
+                // Stop recording
+                isRecording = false;
+                btn.className = "px-4 py-2 rounded-xl font-bold bg-rose-400 text-white shadow-md hover:bg-rose-500 transition flex items-center gap-2";
+                icon.className = "fa-solid fa-circle text-xs";
+                text.innerText = "녹음하기";
+                
+                if (recordedNotes.length > 0) {
+                    playBtn.disabled = false;
+                    playBtn.className = "px-4 py-2 rounded-xl font-bold bg-emerald-500 text-white shadow-md hover:bg-emerald-600 transition flex items-center gap-2";
+                }
+            }
+        }
+
+        function playRecord() {
+            if (recordedNotes.length === 0) return;
+            const playBtn = document.getElementById('playRecordBtn');
+            playBtn.disabled = true;
+
+            recordedNotes.forEach((item) => {
+                setTimeout(() => {
+                    playTone(item.note);
+                }, item.time);
+            });
+
+            // Re-enable after playback finishes
+            const totalDuration = recordedNotes[recordedNotes.length - 1].time + 1000;
+            setTimeout(() => {
+                playBtn.disabled = false;
+            }, totalDuration);
+        }
+
+        // Initialize keyboard on load
+        window.onload = function() {
+            buildKeyboard();
+        };
+    </script>
+</body>
+</html>
